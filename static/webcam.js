@@ -1,54 +1,12 @@
-let video;
-let interval;
 
-let poseNet;
-let poses = [];
-var count_to_db = 0;
-var type_exercise; 
+Webcam.set({
+  width: 640,
+  height:480,
+  image_format: 'jpeg',
+  jpeg_quality:90
+});
 
-// set some options for posenet model
-let options = {
-  architecture: 'MobileNetV1', // MobileNetV1, ResNet50
-  imageScaleFactor: 0.8, //  A number between 0.2 and 1. Set this number lower to scale down the image and increase the speed when feeding through the network at the cost of accuracy.
-  outputStride: 16, // (8, 16, 32) The smaller the value, the larger the output resolution, and more accurate the model at the cost of speed
-  flipHorizontal: false,
-  minConfidence: 0.5,
-  maxPoseDetections: 3,
-  scoreThreshold: 0.5,
-  nmsRadius: 20,
-  detectionType: 'single',
-  inputResolution: 417, // (161, 193, 257, 289, 321, 353, 385, 417, 449, 481, 513, 801) The larger the value, the more accurate the model at the cost of speed
-  multiplier: 0.75,  // (0.5, 0.75, 1, 1.01) The larger the value, the larger the size of the layers, and more accurate the model at the cost of speed
-  quantBytes: 2 // (4, 2, 1)
-};
-
-function setup() {
-  var canvas = createCanvas(1080, 850);
-  canvas.parent('sketch-holder');
-  let constraints = {
-    video: {
-      optional: [{ maxFrameRate: 4000 }]
-    },
-    audio: false
-  };
-  video = createCapture(VIDEO);
-  video.volume(0);
-  
-  // set the video size to the size of the canvas (canvas's size will effect the keypoints coordinate)
-  video.size(width, height);
-  
-  // Hide the video element, and just show the canvas
-  video.hide();
-  // assign poseNet
-  poseNet = ml5.poseNet(video, options, modelReady);
-
-   // This sets up an event that fills the global variable "poses"
-  // with an array every time new poses are detected
-  poseNet.on('pose', function (results) {
-    poses = results;
-    // console.log(poses)
-  });
-}
+Webcam.attach('#sketch-holder');
 
 function startTraining(){
   let starting_btn = document.getElementsByClassName("starting_training_btn")[0];
@@ -56,7 +14,7 @@ function startTraining(){
   let stopping_btn = document.getElementsByClassName("stopping_training_btn")[0];
   stopping_btn.style.display = "block";
   setTimeout(function(){
-    interval = setInterval(sendData, 125);
+    interval = setInterval(sendData, 1000);
   }, 1000); 
 }
 
@@ -66,20 +24,13 @@ function stopTraining(){
   let stopping_btn = document.getElementsByClassName("stopping_training_btn")[0];
   stopping_btn.style.display = "none";
   clearInterval(interval);
-  $('ResultModal').modal('show');
 }
 
 function sendData() {
-  let queryString = window.location.search;
-  //console.log(queryString);
-  let urlParams = new URLSearchParams(queryString);
-  type_exercise = urlParams.get('type')
-  //console.log(type_exercise);
+  Webcam.snap(function(data_uri){
 
-  if (poses.length>0){
-      if (poses[0].pose.score > 0.05){
-      let json_data = {'data-uri': poses[0].pose.keypoints,
-                        'type-exercise': type_exercise}
+
+      let json_data = {'data-uri': data_uri}
       fetch('/predict/', {
         method: 'POST',
         processData: false,
@@ -92,21 +43,11 @@ function sendData() {
       .then(res => {
         console.log(res);
         // document.getElementById("cond1").innerHTML = res.cond1;
-        // document.getElementById("cond2").innerHTML = res.cond2;
-        document.getElementById("mistake_count").innerHTML = res.mistake_count;
-        document.getElementById("success_count").innerHTML = res.success_count;
-        count_to_db = res.success_count;
-        document.getElementById("feedback").innerHTML = res.feedback;
-        document.getElementById("modal_mistake_count").innerHTML = res.mistake_count;
-        document.getElementById("modal_success_count").innerHTML = res.success_count;
-        document.getElementById("modal_feedback").innerHTML = res.feedback;
-        if (res.sound_file != 'none'){
-          document.getElementById(res.sound_file).play();
-        };
-      })
-    }
+        document.getElementById("feedback").value = document.getElementById("feedback").value + res['word'];
+        
+        })
+    })
   }
-}
 
 function saveData() {
   let json_data = {'type-exercise': type_exercise,

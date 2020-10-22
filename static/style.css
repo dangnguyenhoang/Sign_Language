@@ -1,5 +1,5 @@
-#poster{
-    background-image: url('/static/images/poster.png'); 
+body{
+    background-image: url('/static/images/Translation.jpg'); 
     background-size: cover; 
     background-repeat: no-repeat; 
     height: 900px;
